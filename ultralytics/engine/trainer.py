@@ -471,8 +471,7 @@ class BaseTrainer:
             self.run_callbacks("on_train_epoch_end")
             # Clear memory on MPS devices after callbacks to prevent accumulation
             if self.device.type == "mps":
-                gc.collect()
-                torch.mps.empty_cache()
+                self._clear_memory()
             if RANK in {-1, 0}:
                 self.ema.update_attr(self.model, include=["yaml", "nc", "args", "names", "stride", "class_weights"])
 

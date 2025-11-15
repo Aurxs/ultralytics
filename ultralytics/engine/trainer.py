@@ -428,6 +428,7 @@ class BaseTrainer:
                     self.loss = loss.sum()
                     if RANK != -1:
                         self.loss *= self.world_size
+                    self.loss_items = self.loss_items.detach()  # detach to prevent memory leaks
                     self.tloss = self.loss_items if self.tloss is None else (self.tloss * i + self.loss_items) / (i + 1)
 
                 # Backward
@@ -468,6 +469,10 @@ class BaseTrainer:
             self.lr = {f"lr/pg{ir}": x["lr"] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
 
             self.run_callbacks("on_train_epoch_end")
+            # Clear memory on MPS devices after callbacks to prevent accumulation
+            if self.device.type == "mps":
+                gc.collect()
+                torch.mps.empty_cache()
             if RANK in {-1, 0}:
                 self.ema.update_attr(self.model, include=["yaml", "nc", "args", "names", "stride", "class_weights"])
 
